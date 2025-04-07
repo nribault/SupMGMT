@@ -1,6 +1,4 @@
 #Requires -Version 5.1
-# -*- coding: utf-8 -*-
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 <#
 Ce script permet de configurer un serveur ou poste de travail Windows afin d'être supervisé via SNMP, WinRM et WMI.
