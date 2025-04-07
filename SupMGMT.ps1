@@ -1,4 +1,4 @@
-<#
+﻿<#
 Ce script permet de configurer un serveur ou poste de travail Windows afin d'être supervisé via SNMP, WinRM et WMI.
 Il génère un compte local du type supervision-xxxxxx et lui affecte les bon droits au niveau groupe, Winmgmt et dcom
 Configure winrm pour une utilisation à distance.
