@@ -1,5 +1,5 @@
 #Requires -Version 5.1
-# Charset: UTF-8
+# -*- coding: utf-8 -*-
 
 <#
 Ce script permet de configurer un serveur ou poste de travail Windows afin d'être supervisé via SNMP, WinRM et WMI.

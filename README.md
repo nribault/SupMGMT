@@ -1,6 +1,3 @@
-#Requires -Version 5.1
-# Charset: UTF-8
-
 # SupMGMT - Script de Configuration de Supervision Windows
 
 ## Description
