@@ -4,10 +4,9 @@
 
 <#
 Ce script permet de configurer un serveur ou poste de travail Windows afin d'être supervisé via SNMP, WinRM et WMI.
-Il génère un compte local du type supervision-xxxxxx et lui affecte les bon droits au niveau groupe, Winmgmt et dcom
-Configure winrm pour une utilisation à distance.
-Il install également l'agent SNMP, créé une communauté SNMP et applique la stratégie pour permettre un accès extérieur.
-Le Ping est également accepté afin de virifier le statu global de l'hôte.
+Il génère un compte local du type supervision-xxxxxx et lui affecte les bons droits au niveau groupe, Winmgmt et dcom Configure winrm pour une utilisation à distance.
+Il installe également l'agent SNMP, crée une communauté SNMP et applique la stratégie pour permettre un accès extérieur.
+Le Ping est également accepté afin de vérifier le statut global de l'hôte.s
 
 Auteur : Nicolas RIBAULT
 Date : 04/04/2025
@@ -486,68 +485,70 @@ function Set-WinRMConfiguration {
 
 # Fonction principale
 function Initialize-Supervision {
-    # Génération des identifiants
-    $Username = New-RandomUsername
-    $Password = New-ComplexPassword
-    $SNMPCommunity = New-SecureSNMPCommunity
-    
-    Write-Host "Configuration de la supervision pour $env:COMPUTERNAME" -ForegroundColor Cyan
-    Write-Host "Nom d'utilisateur généré : $Username" -ForegroundColor Yellow
-    Write-Host "Mot de passe généré : $Password" -ForegroundColor Yellow
-    Write-Host "Communauté SNMP générée : $SNMPCommunity" -ForegroundColor Yellow
-    
-    # Demande de confirmation à l'utilisateur
-    Write-Host "`nVeuillez sauvegarder ces identifiants avant de continuer." -ForegroundColor Yellow
-    $Confirmation = Read-Host "Avez-vous sauvegardé les identifiants et souhaitez-vous continuer ? (O/N)"
-    
-    if ($Confirmation -ne "O") {
-        Write-Host "Opération annulée par l'utilisateur." -ForegroundColor Red
-        exit
+    try {
+        # Génération des identifiants
+        $Username = New-RandomUsername
+        $Password = New-ComplexPassword
+        $SNMPCommunity = New-SecureSNMPCommunity
+
+        # Affichage des informations
+        Write-Host "`nConfiguration de la supervision" -ForegroundColor Cyan
+        Write-Host "=============================" -ForegroundColor Cyan
+        Write-Host "Nom d'utilisateur : $Username"
+        Write-Host "Mot de passe : $Password"
+        Write-Host "Communauté SNMP : $SNMPCommunity"
+        Write-Host "`nCette configuration permettra :"
+        Write-Host "- La supervision SNMP"
+        Write-Host "- L'accès WMI à distance"
+        Write-Host "- L'accès WinRM"
+        Write-Host "- Le ping du système"
+        Write-Host "`nVoulez-vous continuer ? (O/N)" -ForegroundColor Yellow
+        $Confirmation = Read-Host
+
+        if ($Confirmation -ne "O") {
+            Write-Host "Opération annulée par l'utilisateur." -ForegroundColor Red
+            return
+        }
+
+        # Création du compte
+        if (-not (New-LocalSupervisionAccount -Username $Username -Password $Password)) {
+            Write-Error "Échec de la création du compte de supervision"
+            return
+        }
+
+        # Configuration SNMP
+        if (-not (Set-SNMPConfiguration -Community $SNMPCommunity)) {
+            Write-Error "Échec de la configuration SNMP"
+            return
+        }
+
+        # Configuration WMI
+        if (-not (Set-WMIPermissions -Username $Username)) {
+            Write-Error "Échec de la configuration WMI"
+            return
+        }
+
+        # Configuration WinRM
+        if (-not (Set-WinRMConfiguration)) {
+            Write-Error "Échec de la configuration WinRM"
+            return
+        }
+
+        # Configuration ICMP
+        if (-not (Enable-ICMPEchoRequest)) {
+            Write-Error "Échec de la configuration ICMP"
+            return
+        }
+
+        Write-Host "`nConfiguration terminée avec succès !" -ForegroundColor Green
+        Write-Host "Conservez précieusement ces identifiants :" -ForegroundColor Yellow
+        Write-Host "Nom d'utilisateur : $Username"
+        Write-Host "Mot de passe : $Password"
+        Write-Host "Communauté SNMP : $SNMPCommunity"
     }
-    
-    # Création du compte
-    if (New-LocalSupervisionAccount -Username $Username -Password $Password) {
-        Write-Host "`nCompte créé avec succès." -ForegroundColor Green
+    catch {
+        Write-Error "Erreur lors de l'initialisation de la supervision : $_"
     }
-    else {
-        Write-Host "`nLa création du compte a échoué. Veuillez vérifier les messages d'erreur ci-dessus." -ForegroundColor Red
-        exit
-    }
-    
-    # Configuration SNMP
-    if (Set-SNMPConfiguration -Community $SNMPCommunity) {
-        Write-Host "Configuration SNMP terminée avec succès." -ForegroundColor Green
-    }
-    else {
-        Write-Host "`nLa configuration SNMP a échoué. Veuillez vérifier les messages d'erreur ci-dessus." -ForegroundColor Red
-    }
-    
-    # Autorisation du ping
-    if (Enable-ICMPEchoRequest) {
-        Write-Host "Configuration du ping terminée avec succès." -ForegroundColor Green
-    }
-    else {
-        Write-Host "`nLa configuration du ping a échoué. Veuillez vérifier les messages d'erreur ci-dessus." -ForegroundColor Red
-    }
-    
-    # Configuration des autorisations WMI
-    if (Set-WMIPermissions -Username $Username) {
-        Write-Host "Configuration WMI terminée avec succès." -ForegroundColor Green
-    }
-    else {
-        Write-Host "`nLa configuration WMI a échoué. Veuillez vérifier les messages d'erreur ci-dessus." -ForegroundColor Red
-    }
-    
-    # Configuration WinRM
-    if (Set-WinRMConfiguration) {
-        Write-Host "Configuration WinRM terminée avec succès." -ForegroundColor Green
-    }
-    else {
-        Write-Host "`nLa configuration WinRM a échoué. Veuillez vérifier les messages d'erreur ci-dessus." -ForegroundColor Red
-    }
-    
-    # TODO: Implémenter les autres fonctionnalités
-    # - Configuration des droits
 }
 
 # Démarrage du script
