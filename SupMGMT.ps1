@@ -1,20 +1,22 @@
 #Requires -Version 5.1
+# -*- coding: utf-8 -*-
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 <#
-Ce script permet de configurer un serveur ou poste de travail Windows afin d'Ítre supervisÈ via SNMP, WinRM et WMI.
-Il gÈnËre un compte local du type supervision-xxxxxx et lui affecte les bons droits au niveau groupe, Winmgmt et dcom Configure winrm pour une utilisation ‡ distance.
-Il installe Ègalement l'agent SNMP, crÈe une communautÈ SNMP et applique la stratÈgie pour permettre un accËs extÈrieur.
-Le Ping est Ègalement acceptÈ afin de vÈrifier le statut global de l'hÙte.s
+Ce script permet de configurer un serveur ou poste de travail Windows afin d'√™tre supervis√© via SNMP, WinRM et WMI.
+Il g√©n√®re un compte local du type supervision-xxxxxx et lui affecte les bons droits au niveau groupe, Winmgmt et dcom Configure winrm pour une utilisation √† distance.
+Il installe √©galement l'agent SNMP, cr√©e une communaut√© SNMP et applique la strat√©gie pour permettre un acc√®s ext√©rieur.
+Le Ping est √©galement accept√© afin de v√©rifier le statut global de l'h√¥te.s
 
 Auteur : Nicolas RIBAULT
 Date : 04/04/2025
 #>
 
-# VÈrification des droits administrateur
+# V√©rification des droits administrateur
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Write-Warning "Ce script nÈcessite des droits administrateur. Relancement en tant qu'administrateur..."
+    Write-Warning "Ce script n√©cessite des droits administrateur. Relancement en tant qu'administrateur..."
     
-    # CrÈation d'une nouvelle instance PowerShell avec les droits administrateur
+    # Cr√©ation d'une nouvelle instance PowerShell avec les droits administrateur
     $NewProcess = New-Object System.Diagnostics.ProcessStartInfo "PowerShell"
     $NewProcess.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$($MyInvocation.MyCommand.Path)`""
     $NewProcess.Verb = "runas"
@@ -24,54 +26,54 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
         exit
     }
     catch {
-        Write-Error "Impossible de relancer le script en tant qu'administrateur. Veuillez exÈcuter PowerShell en tant qu'administrateur manuellement."
+        Write-Error "Impossible de relancer le script en tant qu'administrateur. Veuillez ex√©cuter PowerShell en tant qu'administrateur manuellement."
         exit
     }
 }
 
-# Fonction pour gÈnÈrer un mot de passe complexe
+# Fonction pour g√©n√©rer un mot de passe complexe
 function New-ComplexPassword {
     param (
         [int]$Length = 18
     )
     
-    # DÈfinir les ensembles de caractËres
+    # D√©finir les ensembles de caract√®res
     $UpperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray()
     $LowerCase = "abcdefghijklmnopqrstuvwxyz".ToCharArray()
     $Numbers = "0123456789".ToCharArray()
     $SpecialChars = "!@#$%^&*()_+-=[]{}|;:,.<>?".ToCharArray()
     
-    # CrÈer un tableau pour stocker les caractËres du mot de passe
+    # Cr√©er un tableau pour stocker les caract√®res du mot de passe
     $PasswordChars = @()
     
-    # Ajouter un caractËre de chaque type
+    # Ajouter un caract√®re de chaque type
     $PasswordChars += $UpperCase | Get-Random -Count 1
     $PasswordChars += $LowerCase | Get-Random -Count 1
     $PasswordChars += $Numbers | Get-Random -Count 1
     $PasswordChars += $SpecialChars | Get-Random -Count 1
     
-    # CrÈer un tableau avec tous les caractËres possibles
+    # Cr√©er un tableau avec tous les caract√®res possibles
     $AllChars = $UpperCase + $LowerCase + $Numbers + $SpecialChars
     
-    # Ajouter des caractËres alÈatoires jusqu'‡ atteindre la longueur souhaitÈe
+    # Ajouter des caract√®res al√©atoires jusqu'√† atteindre la longueur souhait√©e
     $RemainingLength = $Length - 4
     $PasswordChars += $AllChars | Get-Random -Count $RemainingLength
     
-    # MÈlanger le tableau de caractËres
+    # M√©langer le tableau de caract√®res
     $PasswordChars = $PasswordChars | Get-Random -Count $PasswordChars.Count
     
-    # Convertir en chaÓne
+    # Convertir en cha√Æne
     return -join $PasswordChars
 }
 
-# Fonction pour gÈnÈrer un nom d'utilisateur alÈatoire
+# Fonction pour g√©n√©rer un nom d'utilisateur al√©atoire
 function New-RandomUsername {
     $Prefix = "supervision-"
     $RandomSuffix = -join ((48..57) + (97..122) | Get-Random -Count 6 | ForEach-Object {[char]$_})
     return $Prefix + $RandomSuffix
 }
 
-# Fonction pour crÈer un compte local
+# Fonction pour cr√©er un compte local
 function New-LocalSupervisionAccount {
     param (
         [string]$Username,
@@ -79,14 +81,14 @@ function New-LocalSupervisionAccount {
     )
     
     try {
-        # VÈrification si le compte existe dÈj‡
+        # V√©rification si le compte existe d√©j√†
         $ExistingUser = Get-LocalUser -Name $Username -ErrorAction SilentlyContinue
         if ($ExistingUser) {
-            Write-Warning "Le compte $Username existe dÈj‡. Suppression du compte existant..."
+            Write-Warning "Le compte $Username existe d√©j√†. Suppression du compte existant..."
             Remove-LocalUser -Name $Username -ErrorAction Stop
         }
         
-        # CrÈation du compte
+        # Cr√©ation du compte
         $SecurePassword = ConvertTo-SecureString -String $Password -AsPlainText -Force
         $UserParams = @{
             Name = $Username
@@ -97,7 +99,7 @@ function New-LocalSupervisionAccount {
         }
         New-LocalUser @UserParams
         
-        # Restreindre les droits d'accËs
+        # Restreindre les droits d'acc√®s
         $UserSID = (Get-LocalUser -Name $Username).SID
         $DenyLogonLocally = "SeDenyInteractiveLogonRight"
         $DenyLogonRemote = "SeDenyRemoteInteractiveLogonRight"
@@ -131,64 +133,64 @@ function New-LocalSupervisionAccount {
                 $Group = Get-LocalGroup -Name $GroupName -ErrorAction Stop
                 if ($Group) {
                     Add-LocalGroupMember -Group $GroupName -Member $Username -ErrorAction Stop
-                    Write-Host "Utilisateur ajoutÈ au groupe '$GroupName'" -ForegroundColor Green
+                    Write-Host "Utilisateur ajout√© au groupe '$GroupName'" -ForegroundColor Green
                     $GroupFound = $true
                     break
                 }
             }
             catch {
-                Write-Debug "Groupe '$GroupName' non trouvÈ"
+                Write-Debug "Groupe '$GroupName' non trouv√©"
             }
         }
         
         if (-not $GroupFound) {
-            Write-Warning "Aucun groupe Performance Log Users n'a ÈtÈ trouvÈ. Veuillez vÈrifier manuellement l'appartenance au groupe."
+            Write-Warning "Aucun groupe Performance Log Users n'a √©t√© trouv√©. Veuillez v√©rifier manuellement l'appartenance au groupe."
         }
         
-        # VÈrification de l'appartenance au groupe
+        # V√©rification de l'appartenance au groupe
         $UserGroups = Get-LocalGroup | Where-Object { (Get-LocalGroupMember -Group $_).Name -contains "$env:COMPUTERNAME\$Username" }
         Write-Host "`nGroupes de l'utilisateur :" -ForegroundColor Cyan
         $UserGroups | ForEach-Object { Write-Host "- $($_.Name)" -ForegroundColor Yellow }
         
-        Write-Host "`nCompte $Username crÈÈ avec succËs." -ForegroundColor Green
+        Write-Host "`nCompte $Username cr√©√© avec succ√®s." -ForegroundColor Green
         return $true
     }
     catch {
-        Write-Error "Erreur lors de la crÈation du compte : $_"
+        Write-Error "Erreur lors de la cr√©ation du compte : $_"
         return $false
     }
 }
 
-# Fonction pour gÈnÈrer une communautÈ SNMP sÈcurisÈe
+# Fonction pour g√©n√©rer une communaut√© SNMP s√©curis√©e
 function New-SecureSNMPCommunity {
     param (
         [int]$Length = 16
     )
     
-    # DÈfinir les ensembles de caractËres
+    # D√©finir les ensembles de caract√®res
     $UpperCase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray()
     $LowerCase = "abcdefghijklmnopqrstuvwxyz".ToCharArray()
     $Numbers = "0123456789".ToCharArray()
     
-    # CrÈer un tableau pour stocker les caractËres de la communautÈ
+    # Cr√©er un tableau pour stocker les caract√®res de la communaut√©
     $CommunityChars = @()
     
-    # Ajouter au moins un caractËre de chaque type
+    # Ajouter au moins un caract√®re de chaque type
     $CommunityChars += $UpperCase | Get-Random -Count 1
     $CommunityChars += $LowerCase | Get-Random -Count 1
     $CommunityChars += $Numbers | Get-Random -Count 1
     
-    # CrÈer un tableau avec tous les caractËres possibles
+    # Cr√©er un tableau avec tous les caract√®res possibles
     $AllChars = $UpperCase + $LowerCase + $Numbers
     
-    # Ajouter des caractËres alÈatoires jusqu'‡ atteindre la longueur souhaitÈe
+    # Ajouter des caract√®res al√©atoires jusqu'√† atteindre la longueur souhait√©e
     $RemainingLength = $Length - 3
     $CommunityChars += $AllChars | Get-Random -Count $RemainingLength
     
-    # MÈlanger le tableau de caractËres
+    # M√©langer le tableau de caract√®res
     $CommunityChars = $CommunityChars | Get-Random -Count $CommunityChars.Count
     
-    # Convertir en chaÓne
+    # Convertir en cha√Æne
     return -join $CommunityChars
 }
 
@@ -200,12 +202,12 @@ function Set-SNMPConfiguration {
     )
     
     try {
-        # VÈrifier si le service SNMP est installÈ
+        # V√©rifier si le service SNMP est install√©
         $SNMPService = Get-Service -Name "SNMP" -ErrorAction SilentlyContinue
         if (-not $SNMPService) {
             Write-Host "Installation du service SNMP..." -ForegroundColor Yellow
             
-            # DÈtecter le type de systËme d'exploitation
+            # D√©tecter le type de syst√®me d'exploitation
             $OSInfo = Get-WmiObject -Class Win32_OperatingSystem
             $IsServer = $OSInfo.ProductType -eq 2  # 2 = Server, 1 = Workstation
             
@@ -215,8 +217,8 @@ function Set-SNMPConfiguration {
                 $InstallResult = Install-WindowsFeature -Name "SNMP-Service" -IncludeManagementTools -ErrorAction Stop
                 
                 if ($InstallResult.RestartNeeded) {
-                    Write-Host "Un redÈmarrage est nÈcessaire pour terminer l'installation de SNMP." -ForegroundColor Yellow
-                    Write-Host "Veuillez redÈmarrer le systËme et relancer le script." -ForegroundColor Yellow
+                    Write-Host "Un red√©marrage est n√©cessaire pour terminer l'installation de SNMP." -ForegroundColor Yellow
+                    Write-Host "Veuillez red√©marrer le syst√®me et relancer le script." -ForegroundColor Yellow
                     return $false
                 }
             }
@@ -226,13 +228,13 @@ function Set-SNMPConfiguration {
                 $InstallResult = Add-WindowsCapability -Online -Name "SNMP.Client~~~~0.0.1.0" -ErrorAction Stop
                 
                 if ($InstallResult.RestartNeeded) {
-                    Write-Host "Un redÈmarrage est nÈcessaire pour terminer l'installation de SNMP." -ForegroundColor Yellow
-                    Write-Host "Veuillez redÈmarrer le systËme et relancer le script." -ForegroundColor Yellow
+                    Write-Host "Un red√©marrage est n√©cessaire pour terminer l'installation de SNMP." -ForegroundColor Yellow
+                    Write-Host "Veuillez red√©marrer le syst√®me et relancer le script." -ForegroundColor Yellow
                     return $false
                 }
             }
             
-            # Attendre que le service soit installÈ
+            # Attendre que le service soit install√©
             Write-Host "`nAttente de l'installation du service..." -ForegroundColor Yellow
             $Timeout = 30
             $Counter = 0
@@ -242,52 +244,52 @@ function Set-SNMPConfiguration {
             }
             
             if ($Counter -ge $Timeout) {
-                throw "Le service SNMP n'a pas ÈtÈ installÈ aprËs $Timeout secondes."
+                throw "Le service SNMP n'a pas √©t√© install√© apr√®s $Timeout secondes."
             }
         }
         
-        # VÈrifier si le service est maintenant disponible
+        # V√©rifier si le service est maintenant disponible
         $SNMPService = Get-Service -Name "SNMP" -ErrorAction SilentlyContinue
         if (-not $SNMPService) {
-            throw "Le service SNMP n'est pas disponible. Veuillez vÈrifier que le composant est bien installÈ."
+            throw "Le service SNMP n'est pas disponible. Veuillez v√©rifier que le composant est bien install√©."
         }
         
-        # Configurer la communautÈ SNMP
+        # Configurer la communaut√© SNMP
         $RegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\ValidCommunities"
         if (-not (Test-Path $RegPath)) {
             New-Item -Path $RegPath -Force | Out-Null
         }
         
-        # Supprimer les anciennes communautÈs
+        # Supprimer les anciennes communaut√©s
         Remove-ItemProperty -Path $RegPath -Name * -ErrorAction SilentlyContinue
         
-        # Ajouter la nouvelle communautÈ avec droits en lecture seule
+        # Ajouter la nouvelle communaut√© avec droits en lecture seule
         New-ItemProperty -Path $RegPath -Name $Community -Value 4 -PropertyType DWORD -Force | Out-Null
         
-        # Configurer les permissions d'accËs
+        # Configurer les permissions d'acc√®s
         $PermittedManagersPath = "HKLM:\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\PermittedManagers"
         
         if ($ProbeIP -eq "any") {
-            # Supprimer la clÈ PermittedManagers pour autoriser toutes les IP
+            # Supprimer la cl√© PermittedManagers pour autoriser toutes les IP
             if (Test-Path $PermittedManagersPath) {
                 Remove-Item -Path $PermittedManagersPath -Recurse -Force
-                Write-Host "CommunautÈ SNMP configurÈe pour toutes les adresses IP." -ForegroundColor Green
+                Write-Host "Communaut√© SNMP configur√©e pour toutes les adresses IP." -ForegroundColor Green
             }
         }
         else {
-            # CrÈer la clÈ et ajouter l'IP spÈcifique
+            # Cr√©er la cl√© et ajouter l'IP sp√©cifique
             if (-not (Test-Path $PermittedManagersPath)) {
                 New-Item -Path $PermittedManagersPath -Force | Out-Null
             }
             New-ItemProperty -Path $PermittedManagersPath -Name "1" -Value $ProbeIP -PropertyType String -Force | Out-Null
-            Write-Host "CommunautÈ SNMP configurÈe pour l'adresse IP : $ProbeIP" -ForegroundColor Green
+            Write-Host "Communaut√© SNMP configur√©e pour l'adresse IP : $ProbeIP" -ForegroundColor Green
         }
         
-        # RedÈmarrer le service SNMP
-        Write-Host "RedÈmarrage du service SNMP..." -ForegroundColor Yellow
+        # Red√©marrer le service SNMP
+        Write-Host "Red√©marrage du service SNMP..." -ForegroundColor Yellow
         Restart-Service -Name "SNMP" -Force -ErrorAction Stop
         
-        Write-Host "CommunautÈ SNMP '$Community' configurÈe avec succËs." -ForegroundColor Green
+        Write-Host "Communaut√© SNMP '$Community' configur√©e avec succ√®s." -ForegroundColor Green
         return $true
     }
     catch {
@@ -312,11 +314,11 @@ function Enable-ICMPEchoRequest {
     try {
         Write-Host "Configuration du pare-feu pour autoriser le ping..." -ForegroundColor Yellow
         
-        # VÈrifier si la rËgle existe dÈj‡
+        # V√©rifier si la r√®gle existe d√©j√†
         $ExistingRule = Get-NetFirewallRule -DisplayName "Autoriser le ping entrant" -ErrorAction SilentlyContinue
         
         if (-not $ExistingRule) {
-            # CrÈer la rËgle pour autoriser le ping entrant
+            # Cr√©er la r√®gle pour autoriser le ping entrant
             New-NetFirewallRule -DisplayName "Autoriser le ping entrant" `
                                -Direction Inbound `
                                -Protocol ICMPv4 `
@@ -325,12 +327,12 @@ function Enable-ICMPEchoRequest {
                                -Enabled True `
                                -ErrorAction Stop
             
-            Write-Host "RËgle de pare-feu crÈÈe pour autoriser le ping entrant." -ForegroundColor Green
+            Write-Host "R√®gle de pare-feu cr√©√©e pour autoriser le ping entrant." -ForegroundColor Green
         }
         else {
-            # Activer la rËgle existante
+            # Activer la r√®gle existante
             Set-NetFirewallRule -DisplayName "Autoriser le ping entrant" -Enabled True -ErrorAction Stop
-            Write-Host "RËgle de pare-feu existante activÈe pour autoriser le ping entrant." -ForegroundColor Green
+            Write-Host "R√®gle de pare-feu existante activ√©e pour autoriser le ping entrant." -ForegroundColor Green
         }
         
         return $true
@@ -341,7 +343,7 @@ function Enable-ICMPEchoRequest {
     }
 }
 
-# Fonction pour activer une rËgle de pare-feu
+# Fonction pour activer une r√®gle de pare-feu
 function Enable-FirewallRule {
     param (
         [Parameter(Mandatory=$true)]
@@ -349,13 +351,13 @@ function Enable-FirewallRule {
     )
     
     try {
-        Write-Host "Activation de la rËgle de pare-feu '$RuleName'..." -ForegroundColor Yellow
+        Write-Host "Activation de la r√®gle de pare-feu '$RuleName'..." -ForegroundColor Yellow
         Enable-NetFirewallRule -DisplayName $RuleName -ErrorAction Stop
-        Write-Host "RËgle de pare-feu '$RuleName' activÈe avec succËs." -ForegroundColor Green
+        Write-Host "R√®gle de pare-feu '$RuleName' activ√©e avec succ√®s." -ForegroundColor Green
         return $true
     }
     catch {
-        Write-Error "Erreur lors de l'activation de la rËgle de pare-feu '$RuleName' : $_"
+        Write-Error "Erreur lors de l'activation de la r√®gle de pare-feu '$RuleName' : $_"
         return $false
     }
 }
@@ -369,7 +371,7 @@ function Set-WMIPermissions {
     try {
         Write-Host "Configuration des autorisations WMI..." -ForegroundColor Yellow
         
-        # Activer la rËgle de pare-feu WMI-IN
+        # Activer la r√®gle de pare-feu WMI-IN
         Enable-FirewallRule -RuleName "Windows Management Instrumentation (WMI-In)"
         
         # Configurer les droits du Service Control Manager
@@ -378,10 +380,10 @@ function Set-WMIPermissions {
         $SCMResult = Invoke-Expression $SCMCommand
         
         if ($LASTEXITCODE -ne 0) {
-            throw "…chec de la configuration des droits SCM. Code de sortie : $LASTEXITCODE"
+            throw "√âchec de la configuration des droits SCM. Code de sortie : $LASTEXITCODE"
         }
         
-        # DÈfinir les constantes pour les droits WMI
+        # D√©finir les constantes pour les droits WMI
         $OBJECT_INHERIT_ACE_FLAG    = 0x1
         $CONTAINER_INHERIT_ACE_FLAG = 0x2
         $ACCESS_ALLOWED_ACE_TYPE    = 0x0
@@ -398,7 +400,7 @@ function Set-WMIPermissions {
         $READ_CONTROL           = 0x20000
         $WRITE_DAC              = 0x40000
         
-        # Obtenir l'objet de sÈcuritÈ WMI
+        # Obtenir l'objet de s√©curit√© WMI
         $InvokeParams = @{
             Namespace = "root\cimv2"
             Path = "__systemsecurity=@"
@@ -406,7 +408,7 @@ function Set-WMIPermissions {
         
         $Output = Invoke-WmiMethod @InvokeParams -Name "GetSecurityDescriptor"
         if ($Output.ReturnValue -ne 0) {
-            throw "…chec de GetSecurityDescriptor : $($Output.ReturnValue)"
+            throw "√âchec de GetSecurityDescriptor : $($Output.ReturnValue)"
         }
         
         $ACL = $Output.Descriptor
@@ -419,13 +421,13 @@ function Set-WMIPermissions {
         
         $Win32Account = Get-WmiObject @GetParams
         if ($null -eq $Win32Account) {
-            throw "Compte non trouvÈ : $Username"
+            throw "Compte non trouv√© : $Username"
         }
         
-        # Construire le masque d'accËs avec tous les droits nÈcessaires
+        # Construire le masque d'acc√®s avec tous les droits n√©cessaires
         $AccessMask = $WBEM_ENABLE + $WBEM_METHOD_EXECUTE + $WBEM_REMOTE_ACCESS + $READ_CONTROL
         
-        # CrÈer une nouvelle entrÈe ACE
+        # Cr√©er une nouvelle entr√©e ACE
         $ACE = (New-Object System.Management.ManagementClass("Win32_Ace")).CreateInstance()
         $ACE.AccessMask = $AccessMask
         $ACE.AceFlags = $CONTAINER_INHERIT_ACE_FLAG
@@ -436,7 +438,7 @@ function Set-WMIPermissions {
         $ACE.Trustee = $Trustee
         $ACE.AceType = $ACCESS_ALLOWED_ACE_TYPE
         
-        # Ajouter la nouvelle ACE ‡ la DACL existante
+        # Ajouter la nouvelle ACE √† la DACL existante
         $ACL.DACL += $ACE
         
         # Appliquer les modifications
@@ -447,10 +449,10 @@ function Set-WMIPermissions {
         
         $Output = Invoke-WmiMethod @SetParams
         if ($Output.ReturnValue -ne 0) {
-            throw "…chec de SetSecurityDescriptor : $($Output.ReturnValue)"
+            throw "√âchec de SetSecurityDescriptor : $($Output.ReturnValue)"
         }
         
-        Write-Host "Autorisations WMI configurÈes avec succËs pour $Username." -ForegroundColor Green
+        Write-Host "Autorisations WMI configur√©es avec succ√®s pour $Username." -ForegroundColor Green
         return $true
     }
     catch {
@@ -464,15 +466,15 @@ function Set-WinRMConfiguration {
     try {
         Write-Host "Configuration de WinRM..." -ForegroundColor Yellow
         
-        # ExÈcuter la configuration rapide de WinRM
+        # Ex√©cuter la configuration rapide de WinRM
         $Result = winrm quickconfig -quiet -force
         
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "WinRM configurÈ avec succËs." -ForegroundColor Green
+            Write-Host "WinRM configur√© avec succ√®s." -ForegroundColor Green
             return $true
         }
         else {
-            throw "…chec de la configuration WinRM. Code de sortie : $LASTEXITCODE"
+            throw "√âchec de la configuration WinRM. Code de sortie : $LASTEXITCODE"
         }
     }
     catch {
@@ -484,7 +486,7 @@ function Set-WinRMConfiguration {
 # Fonction principale
 function Initialize-Supervision {
     try {
-        # GÈnÈration des identifiants
+        # G√©n√©ration des identifiants
         $Username = New-RandomUsername
         $Password = New-ComplexPassword
         $SNMPCommunity = New-SecureSNMPCommunity
@@ -494,64 +496,64 @@ function Initialize-Supervision {
         Write-Host "=============================" -ForegroundColor Cyan
         Write-Host "Nom d'utilisateur : $Username"
         Write-Host "Mot de passe : $Password"
-        Write-Host "CommunautÈ SNMP : $SNMPCommunity"
+        Write-Host "Communaut√© SNMP : $SNMPCommunity"
         Write-Host "`nCette configuration permettra :"
         Write-Host "- La supervision SNMP"
-        Write-Host "- L'accËs WMI ‡ distance"
-        Write-Host "- L'accËs WinRM"
-        Write-Host "- Le ping du systËme"
+        Write-Host "- L'acc√®s WMI √† distance"
+        Write-Host "- L'acc√®s WinRM"
+        Write-Host "- Le ping du syst√®me"
         Write-Host "`nVoulez-vous continuer ? (O/N)" -ForegroundColor Yellow
         $Confirmation = Read-Host
 
         if ($Confirmation -ne "O") {
-            Write-Host "OpÈration annulÈe par l'utilisateur." -ForegroundColor Red
+            Write-Host "Op√©ration annul√©e par l'utilisateur." -ForegroundColor Red
             return
         }
 
-        # CrÈation du compte
+        # Cr√©ation du compte
         if (-not (New-LocalSupervisionAccount -Username $Username -Password $Password)) {
-            Write-Error "…chec de la crÈation du compte de supervision"
+            Write-Error "√âchec de la cr√©ation du compte de supervision"
             return
         }
 
         # Configuration SNMP
         if (-not (Set-SNMPConfiguration -Community $SNMPCommunity)) {
-            Write-Error "…chec de la configuration SNMP"
+            Write-Error "√âchec de la configuration SNMP"
             return
         }
 
         # Configuration WMI
         if (-not (Set-WMIPermissions -Username $Username)) {
-            Write-Error "…chec de la configuration WMI"
+            Write-Error "√âchec de la configuration WMI"
             return
         }
 
         # Configuration WinRM
         if (-not (Set-WinRMConfiguration)) {
-            Write-Error "…chec de la configuration WinRM"
+            Write-Error "√âchec de la configuration WinRM"
             return
         }
 
         # Configuration ICMP
         if (-not (Enable-ICMPEchoRequest)) {
-            Write-Error "…chec de la configuration ICMP"
+            Write-Error "√âchec de la configuration ICMP"
             return
         }
 
-        Write-Host "`nConfiguration terminÈe avec succËs !" -ForegroundColor Green
-        Write-Host "Conservez prÈcieusement ces identifiants :" -ForegroundColor Yellow
+        Write-Host "`nConfiguration termin√©e avec succ√®s !" -ForegroundColor Green
+        Write-Host "Conservez pr√©cieusement ces identifiants :" -ForegroundColor Yellow
         Write-Host "Nom d'utilisateur : $Username"
         Write-Host "Mot de passe : $Password"
-        Write-Host "CommunautÈ SNMP : $SNMPCommunity"
+        Write-Host "Communaut√© SNMP : $SNMPCommunity"
     }
     catch {
         Write-Error "Erreur lors de l'initialisation de la supervision : $_"
     }
 }
 
-# DÈmarrage du script
+# D√©marrage du script
 Initialize-Supervision
 
-# Pause ‡ la fin du script
+# Pause √† la fin du script
 Write-Host "`nAppuyez sur une touche pour quitter..."
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
