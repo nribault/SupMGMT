@@ -22,7 +22,7 @@ SupMGMT est un script PowerShell qui automatise la configuration d'un système W
 2. Ouvrez une console PowerShell en tant qu'administrateur
 3. Exécutez le script :
 ```powershell
-iwr -useb https://bit.ly/3R7YVWX | iex
+iex ((New-Object System.Net.WebClient).DownloadString('https://lc.cx/raOETU'))
 ```
 
 ## Utilisation
